@@ -461,6 +461,42 @@ function octavia_configure {
     iniset $OCTAVIA_CONF DEFAULT graceful_shutdown_timeout 300
 }
 
+function octavia_create_network_interface_device {
+    INTERFACE=$1
+    MGMT_PORT_ID=$2
+    MGMT_PORT_MAC=$3
+
+    if [[ $NEUTRON_AGENT == "openvswitch" || $Q_AGENT == "openvswitch" || $NEUTRON_AGENT == "ovn" || $Q_AGENT == "ovn" ]]; then
+        if [[ $NEUTRON_AGENT == "ovn" || $Q_AGENT == "ovn" ]]; then
+            openstack subnet set --gateway none lb-mgmt-subnet
+        fi
+        sudo ovs-vsctl -- --may-exist add-port ${OVS_BRIDGE:-br-int} $INTERFACE -- set Interface $INTERFACE type=internal -- set Interface $INTERFACE external-ids:iface-status=active -- set Interface $INTERFACE external-ids:attached-mac=$MGMT_PORT_MAC -- set Interface $INTERFACE external-ids:iface-id=$MGMT_PORT_ID -- set Interface $INTERFACE external-ids:skip_cleanup=true
+    elif [[ $NEUTRON_AGENT == "linuxbridge" || $Q_AGENT == "linuxbridge" ]]; then
+        if ! ip link show $INTERFACE ; then
+            sudo ip link add $INTERFACE type veth peer name o-bhm0
+            NETID=$(openstack network show lb-mgmt-net -c id -f value)
+            BRNAME=brq$(echo $NETID|cut -c 1-11)
+            sudo ip link set o-bhm0 master $BRNAME
+            sudo ip link set o-bhm0 up
+        fi
+    else
+        die "Unknown network controller - $NEUTRON_AGENT/$Q_AGENT"
+    fi
+}
+
+function octavia_delete_network_interface_device {
+
+    if [[ $NEUTRON_AGENT == "openvswitch" || $Q_AGENT == "openvswitch" || $NEUTRON_AGENT == "ovn" || $Q_AGENT == "ovn" ]]; then
+        :  # Do nothing
+    elif [[ $NEUTRON_AGENT == "linuxbridge" || $Q_AGENT == "linuxbridge" ]]; then
+        if ip link show $INTERFACE ; then
+            sudo ip link del $INTERFACE
+        fi
+    else
+        die "Unknown network controller - $NEUTRON_AGENT/$Q_AGENT"
+    fi
+}
+
 function create_mgmt_network_interface {
     if [ $OCTAVIA_MGMT_PORT_IP != 'auto' ]; then
         SUBNET_ID=$(openstack subnet show lb-mgmt-subnet -f value -c id)
@@ -772,23 +808,23 @@ function octavia_init {
         fi
 
         # Create a management network.
-        # build_mgmt_network
+        build_mgmt_network
         OCTAVIA_AMP_NETWORK_ID=$(openstack network show lb-mgmt-net -f value -c id)
         iniset $OCTAVIA_CONF controller_worker amp_boot_network_list ${OCTAVIA_AMP_NETWORK_ID}
 
         create_octavia_accounts
 
-        # add_load-balancer_roles
+        add_load-balancer_roles
     elif [ $OCTAVIA_NODE == 'api' ] ; then
         create_octavia_accounts
 
-        # add_load-balancer_roles
+        add_load-balancer_roles
     fi
 
     if [ $OCTAVIA_NODE != 'api' ] ; then
-        # create_mgmt_network_interface
+        create_mgmt_network_interface
         create_amphora_flavor
-        # configure_lb_mgmt_sec_grp
+        configure_lb_mgmt_sec_grp
         configure_rsyslog
     fi
 
