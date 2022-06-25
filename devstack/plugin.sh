@@ -772,23 +772,23 @@ function octavia_init {
         fi
 
         # Create a management network.
-        build_mgmt_network
+        # build_mgmt_network
         OCTAVIA_AMP_NETWORK_ID=$(openstack network show lb-mgmt-net -f value -c id)
         iniset $OCTAVIA_CONF controller_worker amp_boot_network_list ${OCTAVIA_AMP_NETWORK_ID}
 
         create_octavia_accounts
 
-        add_load-balancer_roles
+        # add_load-balancer_roles
     elif [ $OCTAVIA_NODE == 'api' ] ; then
         create_octavia_accounts
 
-        add_load-balancer_roles
+        # add_load-balancer_roles
     fi
 
     if [ $OCTAVIA_NODE != 'api' ] ; then
-        create_mgmt_network_interface
+        # create_mgmt_network_interface
         create_amphora_flavor
-        configure_lb_mgmt_sec_grp
+        # configure_lb_mgmt_sec_grp
         configure_rsyslog
     fi
 
