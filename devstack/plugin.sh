@@ -374,7 +374,7 @@ function octavia_configure {
 
     mkdir -m755 $OCTAVIA_SSH_DIR
 
-    if [[ "$(trueorfalse True OCTAVIA_USE_PREGENERATED_SSH_KEY)" == "True" ]]; then
+    if [[ "$(trueorfalse False OCTAVIA_USE_PREGENERATED_SSH_KEY)" == "True" ]]; then
         cp -fp ${OCTAVIA_PREGENERATED_SSH_KEY_PATH} ${OCTAVIA_AMP_SSH_KEY_PATH}
         cp -fp ${OCTAVIA_PREGENERATED_SSH_KEY_PATH}.pub ${OCTAVIA_AMP_SSH_KEY_PATH}.pub
         chmod 0600 ${OCTAVIA_AMP_SSH_KEY_PATH}
